@@ -2,6 +2,7 @@
 # task definition revision, on push to the `deploy` branch.
 #
 # Auth: OIDC role assumption — no long-lived AWS credentials in repo secrets.
+# Role ARN comes from the `production` environment secret AWS_ROLE_ARN.
 # Role: thunderbird-legacy-github-oidc-prod-code-coverage-prod (in account
 # 768512802988, provisioned by thunderbird/platform-infrastructure).
 # Trust is scoped to repo:thunderbird/code-coverage:environment:production.
@@ -46,7 +47,9 @@ jobs:
     - name: Configure AWS credentials (OIDC)
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        role-to-assume: arn:aws:iam::768512802988:role/thunderbird-legacy-github-oidc-prod-code-coverage-prod
+        # AWS_ROLE_ARN is the production environment secret; the role itself is
+        # provisioned in thunderbird/platform-infrastructure (see file header).
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
         aws-region: ${{ env.AWS_REGION }}
 
     - name: Login to Amazon ECR
