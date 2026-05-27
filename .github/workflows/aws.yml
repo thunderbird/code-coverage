@@ -1,5 +1,11 @@
-# This workflow will build and push a new container image to Amazon ECR,
-# and then will deploy a new task definition to Amazon ECS, when there is a push to the "staging" branch.
+# Builds and pushes container images to Amazon ECR, then deploys a new ECS
+# task definition revision, on push to the `deploy` branch.
+#
+# Auth: OIDC role assumption — no long-lived AWS credentials in repo secrets.
+# Role ARN comes from the `production` environment secret AWS_ROLE_ARN.
+# Role: thunderbird-legacy-github-oidc-prod-code-coverage-prod (in account
+# 768512802988, provisioned by thunderbird/platform-infrastructure).
+# Trust is scoped to repo:thunderbird/code-coverage:environment:production.
 
 name: Deploy to Production Environment
 
@@ -24,6 +30,7 @@ env:
 
 permissions:
   contents: read
+  id-token: write     # required for OIDC role assumption
 
 jobs:
   deploy:
@@ -35,18 +42,19 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v1
+    - name: Configure AWS credentials (OIDC)
+      uses: aws-actions/configure-aws-credentials@v4
       with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        # AWS_ROLE_ARN is the production environment secret; the role itself is
+        # provisioned in thunderbird/platform-infrastructure (see file header).
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
         aws-region: ${{ env.AWS_REGION }}
 
     - name: Login to Amazon ECR
       id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v1
+      uses: aws-actions/amazon-ecr-login@v2
 
     - name: Build, tag, and push backend to Amazon ECR
       id: build-backend
